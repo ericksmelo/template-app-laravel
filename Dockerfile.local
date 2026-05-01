@@ -1,0 +1,44 @@
+FROM php:8.4-alpine
+
+RUN apk add --no-cache \
+    bash git curl \
+    libpng-dev libjpeg-turbo-dev freetype-dev \
+    libzip-dev oniguruma-dev icu-dev \
+    sqlite-dev \
+    nodejs npm \
+    $PHPIZE_DEPS \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_sqlite pdo_mysql mbstring bcmath gd zip intl \
+    && apk del $PHPIZE_DEPS
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+RUN composer install --no-scripts --no-autoloader --prefer-dist
+
+COPY . .
+
+RUN mkdir -p bootstrap/cache storage/framework/views storage/framework/cache/data \
+        storage/framework/sessions storage/logs \
+    && chmod -R 777 storage bootstrap/cache \
+    && cp .env.example .env \
+    && composer dump-autoload --optimize \
+    && php artisan key:generate --force
+
+COPY package.json package-lock.json ./
+RUN npm ci && npm run build
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "\
+  sed -i \"s|^DB_CONNECTION=.*|DB_CONNECTION=${DB_CONNECTION:-sqlite}|\" .env && \
+  sed -i \"s|^DB_HOST=.*|DB_HOST=${DB_HOST:-127.0.0.1}|\" .env && \
+  sed -i \"s|^DB_PORT=.*|DB_PORT=${DB_PORT:-3306}|\" .env && \
+  sed -i \"s|^DB_DATABASE=.*|DB_DATABASE=${DB_DATABASE:-laravel}|\" .env && \
+  sed -i \"s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME:-root}|\" .env && \
+  sed -i \"s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD:-}|\" .env && \
+  php artisan config:clear && \
+  php artisan migrate --force && \
+  php artisan serve --host=0.0.0.0 --port=8000"]
