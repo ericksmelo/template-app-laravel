@@ -71,7 +71,7 @@ RUN printf 'server {\n\
     }\n\
 }\n' > /etc/nginx/http.d/default.conf
 
-RUN printf '#!/bin/sh\nphp-fpm -D\nexec nginx -g "daemon off;"\n' > /usr/local/bin/start.sh \
+RUN printf '#!/bin/sh\nphp artisan migrate --force\nphp-fpm -D\nexec nginx -g "daemon off;"\n' > /usr/local/bin/start.sh \
     && chmod +x /usr/local/bin/start.sh
 
 EXPOSE 80
