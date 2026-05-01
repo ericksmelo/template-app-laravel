@@ -49,10 +49,9 @@ COPY . .
 
 RUN mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
-
-COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
-COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+    && chmod -R 775 storage bootstrap/cache \
+    && printf '[PHP]\nmemory_limit=256M\nupload_max_filesize=50M\npost_max_size=50M\nmax_execution_time=60\nexpose_php=Off\n' > /usr/local/etc/php/conf.d/custom.ini \
+    && printf '[opcache]\nopcache.enable=1\nopcache.memory_consumption=128\nopcache.interned_strings_buffer=8\nopcache.max_accelerated_files=10000\nopcache.validate_timestamps=0\nopcache.save_comments=1\n' > /usr/local/etc/php/conf.d/opcache.ini
 
 EXPOSE 9000
 CMD ["php-fpm"]
