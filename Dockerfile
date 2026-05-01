@@ -30,8 +30,7 @@ RUN npm ci && npm run build
 # Stage 2: runtime (Nginx + PHP-FPM)
 FROM php:8.4-fpm-alpine AS runtime
 
-RUN apk add --no-cache \
-    nginx supervisor \
+RUN apk add --no-cache nginx \
     libpng libjpeg-turbo freetype libzip icu-libs oniguruma \
     libpng-dev libjpeg-turbo-dev freetype-dev libzip-dev icu-dev oniguruma-dev zlib-dev \
     $PHPIZE_DEPS \
@@ -72,9 +71,8 @@ RUN printf 'server {\n\
     }\n\
 }\n' > /etc/nginx/http.d/default.conf
 
-RUN printf '[supervisord]\nnodaemon=true\nlogfile=/dev/null\nlogfile_maxbytes=0\n\n\
-[program:php-fpm]\ncommand=php-fpm -F\nautostart=true\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n\n\
-[program:nginx]\ncommand=nginx -g "daemon off;"\nautostart=true\nautorestart=true\nstdout_logfile=/dev/stdout\nstdout_logfile_maxbytes=0\nstderr_logfile=/dev/stderr\nstderr_logfile_maxbytes=0\n' > /etc/supervisord.conf
+RUN printf '#!/bin/sh\nphp-fpm -D\nexec nginx -g "daemon off;"\n' > /usr/local/bin/start.sh \
+    && chmod +x /usr/local/bin/start.sh
 
 EXPOSE 80
-CMD ["supervisord", "-c", "/etc/supervisord.conf"]
+CMD ["/usr/local/bin/start.sh"]
